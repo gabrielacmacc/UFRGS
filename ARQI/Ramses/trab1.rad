@@ -1,0 +1,79 @@
+ORG 192
+ent: db 0 ;inicio do vetor de entrada
+tam: db 0 ;tamanho do vetor de entrada
+sai: db 0 ;inicio do vetor de saída
+
+ORG 186
+sete:     db 0 ;variável para condição de parada
+temp_ent: db 0 ;variável temporária para o ínicio do vetor de entrada
+temp_sai: db 0 ;variável temporária para o ínicio do vetor de saída
+temp_tam: db 0 ;variável temporária para o tamanho do vetor de entrada
+ent2:     db 0 ;variável para o byte sendo analisado da entrada
+mascara:  db 0 ;máscara
+
+ORG 0
+	LDR A,ent
+	STR A,temp_ent ;salva o endereço de inicio da entrada para poder modificar
+	LDR A,sai
+	STR A,temp_sai ;salva o endereço de inicio da saida para poder modificar
+	LDR A,#7
+	STR A,sete
+	LDR X,#0
+	LDR B,#0
+zerar_saida: ;laço para garantir que a saída está zerada de início
+	STR B,temp_sai,I ;zera a primeira saída
+	SUB X,sete
+	JZ troca_bits ;verifica se o contador já chegou em 8, senão pode ir para próxima parte
+	ADD X,sete
+	ADD X,#1
+	LDR A,temp_sai
+	ADD A,#1 ;incrementando o endereço da variável temporária para pegar o próximo vetor
+	STR A,temp_sai
+	JMP zerar_saida
+troca_bits:
+	LDR A,sai
+	STR A,temp_sai
+	LDR A,tam
+	STR A,temp_tam ;salva o tamanho da entrada para poder modificar
+	LDR A,#1 
+	STR A,mascara ;máscara vai ser usada para salvar a saída, começa em 1 para o primeiro byte e vai aumentando
+loop_bytes: ;começa o laço dos bytes de entrada
+	LDR X,#0
+	LDR A,temp_ent,I
+	STR A,ent2 ;salva o conteúdo do primeiro byte de entrada em uma variável par poder modificar
+loop_bits:
+	LDR A,ent2
+	SHR A ;faz um shift para ver qual é o conteúdo do primeiro bit
+	STR A,ent2
+	JC soma_masc ;se deu carry então o bit era 1 e precisa modificar a saída
+checa_cont_bits: ;verifica se já chegou ao final dos 8 bits da entrada
+	SUB X,sete
+	JZ checa_cont_bytes ;se der 0 então acabaram os bits deste byte e precisa olhar para a contagem dos bytes
+	ADD X,sete
+	ADD X,#1
+	LDR A,temp_sai
+	ADD A,#1 ;soma 1 na variável temporária da saída para "andar" no vetor
+	STR A,temp_sai
+	JMP loop_bits ;volta para o laço dos bits
+checa_cont_bytes: ;verifica se acabaram os bytes de entrada 
+	LDR A,temp_tam
+	SUB A,#1
+	JZ fim ;se der zero então acabou o programa
+	STR A,temp_tam
+	LDR A,temp_ent
+	ADD A,#1 ;soma 1 na variável temporária da entrada para "andar" no vetor
+	STR A,temp_ent
+	LDR A,sai
+	STR A,temp_sai ;volta para o primeiro byte da saída
+	LDR A,mascara
+	ADD A,mascara ;multiplicação da máscara para que no próximo byte ela esteja no lugar certo
+	STR A,mascara
+	JMP loop_bytes
+soma_masc:
+	LDR B,temp_sai,I
+	OR B,mascara ;fazer um OR com a máscara garante que não está mudando o resto do vetor
+	STR B,temp_sai,I
+	JMP checa_cont_bits
+fim:
+	HLT
+
